@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #nickname-container, #chat-container {
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #nickname-container input, #chat-container input {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+        }
+        #nickname-container input {
+            max-width: 300px;
+        }
+
+        #nickname-container button, #chat-container button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        #nickname-container button:hover, #chat-container button:hover {
+            background-color: #0056b3;
+        }
+        #messages {
+            width: 100%;
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #fafafa;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #e9e9e9;
+            border-radius: 4px;
+        }
+        .nickname {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="nickname-container">
+        <input type="text" id="nickname" placeholder="Digite seu nickname...">
+        <button onclick="enterChat()">Entrar</button>
+    </div>
+
+    <div id="chat-container" style="display: none;">
+        <div id="messages"></div>
+        <input type="text" id="message" placeholder="Digite sua mensagem...">
+        <button onclick="sendMessage()">Enviar</button>
+    </div>
+
+    <script>
+        let socket;
+        let nickname = '';
+
+        function enterChat() {
+            const nicknameInput = document.getElementById('nickname');
+            if (nicknameInput.value.trim()) {
+                nickname = nicknameInput.value.trim();
+
+                socket = new WebSocket('ws://COLOCAR_IP:3000/ws');
+                
+                //cria uma conexão com o servidor
+                socket.onopen = () => {
+                    console.log('Conectado com sucesso!');
+
+                    socket.send(JSON.stringify({ type: 'register', nickname }));
+
+                    document.getElementById('nickname-container').style.display = 'none';
+                    document.getElementById('chat-container').style.display = 'block';
+                };
+
+                //caso ocorra um erro na conexão
+                socket.onerror = (error) => {
+                    console.error('Erro ao conectar:', error);
+                    alert('Erro ao conectar ao servidor WebSocket.');
+                };
+
+                //escuta as mensagens enviadas pelo servidor
+                socket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    const messagesDiv = document.getElementById('messages');
+
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('message');
+
+                    const nicknameElement = document.createElement('span');
+                    nicknameElement.classList.add('nickname');
+                    nicknameElement.style.color = data.color || 'black';
+                    nicknameElement.textContent = data.nickname + ': ';
+
+                    const messageText = document.createElement('p');
+                    messageText.textContent = data.text;
+
+                    messageElement.appendChild(nicknameElement);
+                    messageElement.appendChild(messageText);
+
+                    messagesDiv.appendChild(messageElement);
+
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                };
+            } else {
+                alert('Por favor, insira um nickname.');
+            }
+        }
+
+        //envia a mensagem para o servidor
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+
+            if (messageInput.value.trim() && socket.readyState === WebSocket.OPEN) {
+                const message = messageInput.value.trim();
+
+                socket.send(JSON.stringify({ type: 'message', text: message }));
+                
+                messageInput.value = '';
+            } else {
+                alert('Não é possível enviar a mensagem. Conexão com o servidor WebSocket não estabelecida.');
+            }
+        }
+    </script>
+</body>
+</html>
